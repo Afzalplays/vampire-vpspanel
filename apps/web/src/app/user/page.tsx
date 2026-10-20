@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {Ambient,Brand} from "../shared";
 type User={id:number;name:string;email:string;role:"ADMIN"|"USER"};
-type Server={id:number;name:string;status:string;details:string;hypervisor_uuid:string;created_at:string};
+type Server={id:number;name:string;status:string;details:string;hypervisor_uuid:string;created_at:string;vcpus?:number|null;memory_mib?:number|null;live_state?:string|null};
 export default function UserPage(){
  const router=useRouter();const [me,setMe]=useState<User|null>(null);const [servers,setServers]=useState<Server[]>([]);const [avatar,setAvatar]=useState("");const [background,setBackground]=useState("");const [backgroundEnabled,setBackgroundEnabled]=useState(true);const [name,setName]=useState("");const [email,setEmail]=useState("");const [currentPassword,setCurrentPassword]=useState("");const [newPassword,setNewPassword]=useState("");const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");const [actionId,setActionId]=useState(0);
  const load=useCallback(async()=>{const r=await fetch("/api/me",{cache:"no-store"});const d=await r.json();if(!d.user){router.replace("/login");return}if(d.user.role==="ADMIN"){router.replace("/admin");return}setMe(d.user);setName(d.user.name);setEmail(d.user.email);const [sr,pr]=await Promise.all([fetch("/api/user/servers",{cache:"no-store"}),fetch("/api/profile",{cache:"no-store"})]);if(sr.ok)setServers((await sr.json()).servers||[]);if(pr.ok){const p=await pr.json();setAvatar(p.settings?.avatar_url||"");setBackground(p.settings?.background_url||"");setBackgroundEnabled(p.settings?.background_enabled!==0)}},[router]);
