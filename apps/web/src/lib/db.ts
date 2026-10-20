@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS records (
  name TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'Pending',
  details TEXT NOT NULL DEFAULT '',
+ owner_user_id INTEGER,
  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -40,7 +41,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 for (const sql of [
   "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','SUSPENDED'))",
   "ALTER TABLE users ADD COLUMN last_login TEXT",
-  "ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0"
+  "ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE records ADD COLUMN owner_user_id INTEGER"
 ]) { try { db.exec(sql); } catch (error) { if (!(error instanceof Error) || !error.message.includes("duplicate column name")) throw error; } }
 if (process.env.NODE_ENV !== "production") globalForDb.vampireDb = db;
 
