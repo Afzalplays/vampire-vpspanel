@@ -1,11 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ambient } from "../page";
+import { Ambient, Brand } from "../shared";
 export default function SetupPage() {
  const [name,setName]=useState("Administrator"), [email,setEmail]=useState("admin@localhost"), [password,setPassword]=useState(""), [error,setError]=useState(""), [busy,setBusy]=useState(false);
  const router=useRouter();
  async function submit(e:React.FormEvent){e.preventDefault();setError("");setBusy(true);try{const r=await fetch("/api/setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email,password})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Setup failed");router.replace("/admin");}catch(x){setError(x instanceof Error?x.message:"Setup failed");}finally{setBusy(false);}}
  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10"><Ambient/><form onSubmit={submit} className="glass relative z-10 w-full max-w-md rounded-2xl p-7 shadow-2xl"><Brand/><p className="mt-7 text-xs font-bold tracking-[.2em] text-rose-400">FIRST-RUN SETUP</p><h1 className="mt-2 text-2xl font-bold">Create your admin</h1><p className="muted mt-2 text-sm">This one-time setup is available only while no user exists.</p><label className="mt-6 block text-sm">Admin name<input className="field mt-2" value={name} onChange={e=>setName(e.target.value)} required minLength={2} maxLength={80}/></label><label className="mt-4 block text-sm">Email<input className="field mt-2" type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label className="mt-4 block text-sm">Password<input className="field mt-2" type="password" value={password} onChange={e=>setPassword(e.target.value)} required minLength={12} autoComplete="new-password" placeholder="At least 12 characters"/></label>{error&&<p className="mt-3 text-sm text-rose-400">{error}</p>}<button className="btn btn-red mt-6 w-full" disabled={busy}>{busy?"Creating admin…":"Create administrator"}</button><p className="muted mt-4 text-xs">Use a unique password. Public registration is disabled.</p></form></main>;
 }
-export function Brand(){return <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 font-black">V</div><div><div className="font-bold">VampireVPSPanel</div><div className="muted text-xs">VampireInfra Technologies</div></div></div>;}
