@@ -82,3 +82,27 @@ These are implementation tasks, not working features just because they appear in
 ## License
 
 No software license has been selected yet. Until a license is added, do not assume this project grants permission to redistribute or use the source under an open-source license.
+
+
+## KVM/QEMU + libvirt agent (existing VMs)
+
+The first libvirt adapter can inventory existing domains and send start, graceful shutdown, reboot and force-stop actions. It is an early integration foundation and has **not** been tested against your host; customer ownership mapping, per-VM authorization, live metrics, console, provisioning, and end-to-end security tests remain incomplete. Until customer-to-UUID ownership checks are implemented, the API and UI are admin-only.
+
+### Install the agent on the KVM host
+
+1. Confirm `virsh -c qemu:///system list --all` shows the existing VMs.
+2. Install Python 3 and libvirt client tools (Debian/Ubuntu: `apt-get install -y python3 libvirt-clients`).
+3. Copy `apps/agent/libvirt-agent.py` to `/opt/vampire-libvirt-agent/libvirt-agent.py` and `apps/agent/vampire-libvirt-agent.service` to `/etc/systemd/system/vampire-libvirt-agent.service`.
+4. Generate a long secret: `openssl rand -hex 32`. Create `/etc/vampire-libvirt-agent.env` with:
+   ```ini
+   LIBVIRT_AGENT_TOKEN=PASTE_RANDOM_SECRET_HERE
+   LIBVIRT_AGENT_HOST=10.0.0.2
+   LIBVIRT_AGENT_PORT=8765
+   LIBVIRT_URI=qemu:///system
+   ```
+   Use a private/VPN IP for `LIBVIRT_AGENT_HOST`; never use `0.0.0.0` or expose port 8765 publicly. Replace `10.0.0.2` with the actual private address on the hypervisor. Protect the environment file with `chmod 600 /etc/vampire-libvirt-agent.env`.
+5. Start the agent: `systemctl daemon-reload && systemctl enable --now vampire-libvirt-agent`. Restrict inbound TCP/8765 to the panel server's private/VPN IP in the firewall.
+6. On the panel server, add `LIBVIRT_AGENT_URL=http://10.0.0.2:8765`, the same `LIBVIRT_AGENT_TOKEN`, and `LIBVIRT_ALLOW_PRIVATE_HTTP=true` to `/opt/vampire-vpspanel/.env.production`. Only enable this HTTP setting over a trusted private/VPN network. Prefer HTTPS if the agent crosses an untrusted network.
+7. Restart the panel: `systemctl restart vampire-vpspanel`. Sign in as admin and open `/admin/hypervisor`.
+
+The agent uses a fixed command allowlist and UUID validation rather than arbitrary shell commands. It still runs with access to libvirt and must be kept private. Force-stop maps to `virsh destroy` and may lose guest data. Do not use this early adapter for customer production until authorization/ownership enforcement and a security review are complete.
