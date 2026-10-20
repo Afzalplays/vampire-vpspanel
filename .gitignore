@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Local panel data and customer uploads
+apps/web/data/
+apps/web/public/uploads/
