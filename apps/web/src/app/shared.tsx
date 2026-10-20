@@ -6,17 +6,20 @@ const defaults: Branding = { brand_name:"VampireVPSPanel", brand_subtitle:"Vampi
 
 function useBranding() {
  const [branding,setBranding]=useState<Branding>(defaults);
- useEffect(()=>{let live=true;fetch("/api/branding",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.branding)setBranding({...defaults,...d.branding});}).catch(()=>{});return()=>{live=false}},[]);
+ useEffect(()=>{let live=true;const load=()=>fetch("/api/branding",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.branding)setBranding({...defaults,...d.branding});}).catch(()=>{});const changed=()=>{void load()};void load();window.addEventListener("vampire-branding-updated",changed);return()=>{live=false;window.removeEventListener("vampire-branding-updated",changed)}},[]);
  return branding;
 }
-export function Ambient() {
+export function Ambient({personal=false}:{personal?:boolean}) {
  const b=useBranding();
- const video=b.background_url && /\.(mp4|webm)(\?|$)/i.test(b.background_url);
- return <div className={"ambient "+(b.background_enabled==="0"?"ambient-disabled":"")} aria-hidden="true">
-   {b.background_enabled!=="0" && b.background_url && (video
-     ? <video className="ambient-media" src={b.background_url} autoPlay muted loop playsInline />
-     : <img className="ambient-media" src={b.background_url} alt="" />)}
-   {b.background_enabled!=="0" && <><div className="orb one"/><div className="orb two"/><div className="orb three"/></>}
+ const [personalAsset,setPersonalAsset]=useState("");
+ const [personalEnabled,setPersonalEnabled]=useState(true);
+ useEffect(()=>{if(!personal)return;let live=true;fetch("/api/profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.settings){setPersonalAsset(d.settings.background_url||"");setPersonalEnabled(d.settings.background_enabled!==0)}}).catch(()=>{});return()=>{live=false}},[personal]);
+ const custom=personal&&personalEnabled&&personalAsset?personalAsset:b.background_url;
+ const enabled=personal&&personalAsset?personalEnabled:b.background_enabled!=="0";
+ const video=Boolean(custom&&/\\.(mp4|webm)(\\?|$)/i.test(custom));
+ return <div className={"ambient "+(!enabled?"ambient-disabled":"")+" motion-"+(b.background_motion||"aurora")} aria-hidden="true">
+   {enabled&&custom&&(video?<video className="ambient-media" src={custom} autoPlay muted loop playsInline/>:<img className="ambient-media" src={custom} alt=""/>)}
+   {enabled&&<><div className="orb one"/><div className="orb two"/><div className="orb three"/></>}
  </div>;
 }
 export function Brand(){
