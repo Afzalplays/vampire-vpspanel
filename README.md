@@ -1,53 +1,108 @@
 # VampireVPSPanel
 
-VampireVPSPanel is a separate VPS hosting control plane inspired by the workflows of commercial virtualization panels. It is designed to manage standalone KVM/QEMU hosts and existing Proxmox VE environments through distinct, explicit backend adapters.
+VampireVPSPanel is a custom VPS hosting control-panel project for eventual KVM/QEMU and Proxmox VE management.
 
-> **Development status:** Early planning/scaffolding. This repository is not yet production-ready and must not be used to manage production hypervisors until implementation and security testing are complete.
+> **Current status — early implementation, not production-ready.** The current application includes a Next.js web UI, first-run administrator setup, cookie-based sessions, SQLite persistence, admin inventory records and an audit log. Inventory records are not real virtual machines. The repository does **not** yet provide production-ready KVM/Proxmox provisioning, live VM metrics, customer VPS lifecycle controls, event-triggered email notifications, signed offline license enforcement, or scheduled expiry suspension. Do not sell VPS services through it or connect it to production hypervisors until these are implemented and security-tested.
 
-## Planned capabilities
+## Install the current web application
 
-- Admin and customer dashboards
-- VPS inventory and lifecycle orchestration
-- Standalone KVM/QEMU integration through a restricted Linux node agent
-- Proxmox VE integration through scoped API credentials
-- Node, storage, network and IP-pool management
-- OS image catalogue and provisioning jobs
-- Resource usage and health monitoring
-- Independent VampireVPSPanel license service with signed entitlements
-- Optional billing, invoices, reseller accounts and extensions
+Supported targets: fresh Debian/Ubuntu servers with root access. The installer installs Node.js 22+, dependencies, builds the current web app, configures a systemd service and creates an Nginx reverse proxy.
 
-## Planned stack
+```bash
+apt-get update && apt-get install -y curl
+curl -fsSL https://raw.githubusercontent.com/Afzalplays/vampire-vpspanel/feat/production-install-foundation/install.sh -o install.sh
+bash install.sh
+```
 
-- **Web:** Next.js, React, TypeScript and Tailwind CSS
-- **API:** NestJS, TypeScript and versioned REST endpoints
-- **Data:** PostgreSQL and Prisma
-- **Jobs:** Redis and BullMQ
-- **KVM agent:** Go, using libvirt APIs
-- **Proxmox:** Proxmox VE API adapter
-- **Licensing:** Separate service using asymmetric signatures
+To use a domain, point its DNS to the server first and pass the domain to the installer:
 
-## Architecture principles
+```bash
+DOMAIN=panel.example.com bash install.sh
+```
 
-1. KVM and Proxmox are separate backends behind a common capability-aware interface.
-2. Privileged host operations are performed by the restricted KVM agent or the Proxmox API—not by arbitrary commands supplied by the web application.
-3. Long-running operations use durable, idempotent jobs.
-4. Every request enforces authentication, role permissions and resource ownership.
-5. License verification outages must not abruptly power off existing customer VMs.
-6. Secrets, signing keys and production databases are isolated from public endpoints.
+The installer currently configures HTTP only. Configure HTTPS with a trusted certificate before exposing the panel publicly. After the service starts, open `/setup` once and create the initial administrator with a unique password of at least 12 characters. Initial setup closes after the first account is created.
 
-## Development roadmap
+Useful commands:
 
-1. Foundation: monorepo, configuration, database, authentication, RBAC and audit trail.
-2. KVM MVP: secure enrollment, node health, verified images and VM lifecycle jobs.
-3. Proxmox adapter: scoped credentials, inventory discovery and supported lifecycle actions.
-4. Customer experience: VPS controls, console integration, metrics and networking.
-5. Licensing: activation, signed entitlements, renewals, revocation and offline grace policy.
-6. Production hardening: installers, backup/restore, upgrade/rollback and security testing.
+```bash
+systemctl status vampire-vpspanel
+journalctl -u vampire-vpspanel -f
+systemctl restart vampire-vpspanel
+```
 
-## Development
+Application files default to `/opt/vampire-vpspanel`; persistent SQLite data is under `data/`. The generated `.env.production` contains a random session secret and must remain private. Back up the data directory and environment file securely.
 
-The repository is being built in phases. Setup commands will be documented after the initial workspace and applications are implemented. Do not copy example secrets into production or expose PostgreSQL/Redis directly to the public internet.
+## Implemented in the current web app
+
+- One-time first-run administrator creation; public registration is disabled.
+- Password hashing and signed, HTTP-only session cookies.
+- Admin-gated user and inventory API routes.
+- SQLite storage and basic audit logging.
+- Basic dashboard and inventory management UI.
+- A web-app installer and systemd/Nginx deployment setup.
+
+## Not implemented yet — no fake status claims
+
+- Actual KVM/QEMU VM creation, power controls, console and networking.
+- Limited Proxmox VE API connector foundation: admin configuration, HTTPS-only API calls, connection/version/node diagnostics, and read-only node/VM inventory endpoints. This is not VM provisioning or a production-ready hypervisor integration.
+- Customer-facing VPS panel and resource ownership enforcement across VM APIs.
+- Admin-managed branding persisted and applied across all app surfaces.
+- SMTP settings, delivery tests, email templates and event-triggered notifications.
+- VPS expiry scheduler, grace periods and real hypervisor suspension/reactivation.
+- Signed license issuance, activation, expiry and revocation.
+- Production-grade backup/restore, migration, monitoring and security test suite.
+
+These are implementation tasks, not working features just because they appear in a UI or roadmap. The installer deploys the current web application only. The Proxmox connector requires a reachable Proxmox VE API, a least-privilege API token, and a manually configured `PROXMOX_TOKEN_SECRET`; it does not create, resize, suspend, or delete VMs.
+
+## Proxmox connector foundation (read-only)
+
+1. In Proxmox VE, create a dedicated API user/token with only the permissions needed for inventory and version checks. Do not use `root@pam` or a full-privilege token.
+2. Set `PROXMOX_TOKEN_SECRET` in `/opt/vampire-vpspanel/.env.production` (never commit it). The admin API saves the HTTPS base URL, token ID, and node name in SQLite; the token secret is read only from the environment.
+3. Restart the service: `systemctl restart vampire-vpspanel`.
+4. As an authenticated admin, use `/api/admin/hypervisor` to read config, `PUT /api/admin/hypervisor` to save `{ "url": "https://pve.example.com:8006", "tokenId": "panel@pve!inventory", "node": "pve1" }`, and `POST /api/admin/hypervisor` to test connectivity. `GET /api/admin/hypervisor?mode=nodes` and `?mode=vms` expose read-only inventory.
+5. Use a trusted TLS certificate on Proxmox. TLS verification is intentionally not disabled. This connector has not been tested against a live Proxmox server and does not provision or control VMs.
+
+## Security notes
+
+- Do not expose the app publicly before configuring HTTPS.
+- Keep `.env.production`, session secrets, mail credentials and hypervisor tokens out of Git.
+- Never grant the web app arbitrary root shell access to hypervisor nodes.
+- Hypervisor actions should use a restricted agent or scoped Proxmox API credentials, strict authorization, durable jobs and audit events.
+- Do not treat a database status change as a real VM suspend operation.
+- Test upgrades and restore procedures on a disposable server before production use.
+
+## Planned architecture
+
+- **Web:** Next.js, React, TypeScript
+- **Data:** currently SQLite for the early web scaffold; production data architecture remains to be completed.
+- **Virtualization:** restricted KVM/libvirt agent and/or Proxmox VE API adapter.
+- **Background work:** durable jobs for provisioning, notifications, license refresh and expiry enforcement.
+- **Licensing:** signed entitlements with explicit offline grace policy.
 
 ## License
 
 No software license has been selected yet. Until a license is added, do not assume this project grants permission to redistribute or use the source under an open-source license.
+
+
+## KVM/QEMU + libvirt agent (existing VMs)
+
+The first libvirt adapter can inventory existing domains and send start, graceful shutdown, reboot and force-stop actions. It is an early integration foundation and has **not** been tested against your host; customer ownership mapping, per-VM authorization, live metrics, console, provisioning, and end-to-end security tests remain incomplete. Until customer-to-UUID ownership checks are implemented, the API and UI are admin-only.
+
+### Install the agent on the KVM host
+
+1. Confirm `virsh -c qemu:///system list --all` shows the existing VMs.
+2. Install Python 3 and libvirt client tools (Debian/Ubuntu: `apt-get install -y python3 libvirt-clients`).
+3. Copy `apps/agent/libvirt-agent.py` to `/opt/vampire-libvirt-agent/libvirt-agent.py` and `apps/agent/vampire-libvirt-agent.service` to `/etc/systemd/system/vampire-libvirt-agent.service`.
+4. Generate a long secret: `openssl rand -hex 32`. Create `/etc/vampire-libvirt-agent.env` with:
+   ```ini
+   LIBVIRT_AGENT_TOKEN=PASTE_RANDOM_SECRET_HERE
+   LIBVIRT_AGENT_HOST=10.0.0.2
+   LIBVIRT_AGENT_PORT=8765
+   LIBVIRT_URI=qemu:///system
+   ```
+   Use a private/VPN IP for `LIBVIRT_AGENT_HOST`; never use `0.0.0.0` or expose port 8765 publicly. Replace `10.0.0.2` with the actual private address on the hypervisor. Protect the environment file with `chmod 600 /etc/vampire-libvirt-agent.env`.
+5. Start the agent: `systemctl daemon-reload && systemctl enable --now vampire-libvirt-agent`. Restrict inbound TCP/8765 to the panel server's private/VPN IP in the firewall.
+6. On the panel server, add `LIBVIRT_AGENT_URL=http://10.0.0.2:8765`, the same `LIBVIRT_AGENT_TOKEN`, and `LIBVIRT_ALLOW_PRIVATE_HTTP=true` to `/opt/vampire-vpspanel/.env.production`. Only enable this HTTP setting over a trusted private/VPN network. Prefer HTTPS if the agent crosses an untrusted network.
+7. Restart the panel: `systemctl restart vampire-vpspanel`. Sign in as admin and open `/admin/hypervisor`.
+
+The agent uses a fixed command allowlist and UUID validation rather than arbitrary shell commands. It still runs with access to libvirt and must be kept private. Force-stop maps to `virsh destroy` and may lose guest data. Do not use this early adapter for customer production until authorization/ownership enforcement and a security review are complete.

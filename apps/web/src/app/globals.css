@@ -22,3 +22,20 @@ button { cursor: pointer; }
 .btn-muted { background: #20212a; color: #e4e4e7; border: 1px solid #343540; }
 .btn-muted:hover { border-color: #e11d48; }
 .muted { color: #9293a1; }
+
+/* Configurable ambient presets */
+.ambient { isolation: isolate; }
+.ambient-minimal { background: #08090d; }
+.ambient-red-nebula { background: radial-gradient(ellipse at 30% 30%, #4c0519 0%, transparent 52%), radial-gradient(ellipse at 80% 70%, #3f0a2c 0%, transparent 45%), #08090d; }
+.ambient-thunderstorm-tornado { background: linear-gradient(180deg,#080b14 0%,#111321 52%,#09090e 100%); }
+.storm-clouds { position:absolute; inset:-20%; opacity:.5; background: radial-gradient(ellipse at 25% 18%,#35394b 0%,transparent 23%),radial-gradient(ellipse at 62% 26%,#252a3d 0%,transparent 26%),radial-gradient(ellipse at 84% 13%,#34394b 0%,transparent 20%); filter:blur(30px); animation:storm-drift 28s ease-in-out infinite alternate; }
+.lightning-flash { position:absolute; inset:0; opacity:0; background:linear-gradient(115deg,transparent 43%,#dbeafe 43.2%,#fff 43.5%,#cbd5e1 43.8%,transparent 44.2%),radial-gradient(ellipse at 44% 20%,#cbd5e1 0%,transparent 40%); mix-blend-mode:screen; animation:lightning 11s linear infinite; }
+.tornado-funnel { position:absolute; width:min(38vw,460px); height:100vh; right:12%; bottom:-8%; opacity:.2; background:repeating-conic-gradient(from 0deg at 50% 100%,transparent 0deg 15deg,rgba(190,198,215,.24) 17deg 20deg,transparent 23deg 36deg); clip-path:polygon(47% 0,53% 0,57% 22%,63% 40%,75% 62%,100% 83%,100% 100%,0 100%,0 84%,27% 62%,38% 40%,44% 22%); filter:blur(7px); transform-origin:50% 100%; animation:funnel-rotate 18s linear infinite; }
+.nebula-clouds { position:absolute; inset:-15%; background:radial-gradient(ellipse at 20% 40%,#be123c50,transparent 30%),radial-gradient(ellipse at 70% 55%,#7e22ce38,transparent 35%); filter:blur(35px); animation:storm-drift 25s ease-in-out infinite alternate; }
+.intensity-low .storm-clouds,.intensity-low .tornado-funnel { opacity:.1; }
+.intensity-high .storm-clouds { opacity:.8; }
+.intensity-high .tornado-funnel { opacity:.3; }
+@keyframes storm-drift { from { transform:translate3d(-2%,0,0) scale(1); } to { transform:translate3d(3%,4%,0) scale(1.12); } }
+@keyframes funnel-rotate { from { transform:rotate(-4deg) scaleX(.95); } to { transform:rotate(4deg) scaleX(1.05); } }
+@keyframes lightning { 0%,11%,13%,57%,59%,100% { opacity:0; } 11.5%,12%,57.5% { opacity:.32; } 12.5%,58% { opacity:.08; } }
+@media (prefers-reduced-motion: reduce) { .storm-clouds,.lightning-flash,.tornado-funnel,.nebula-clouds { animation:none; } .lightning-flash { display:none; } }

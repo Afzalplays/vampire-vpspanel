@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
  password_hash TEXT NOT NULL,
  role TEXT NOT NULL DEFAULT 'USER' CHECK(role IN ('ADMIN','USER')),
+ status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','SUSPENDED')),
+ last_login TEXT,
+ failed_attempts INTEGER NOT NULL DEFAULT 0,
  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS records (
@@ -23,6 +26,7 @@ CREATE TABLE IF NOT EXISTS records (
  name TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'Pending',
  details TEXT NOT NULL DEFAULT '',
+ owner_user_id INTEGER,
  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -33,6 +37,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+// Safe additive migrations for databases created by earlier panel versions.
+for (const sql of [
+  "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','SUSPENDED'))",
+  "ALTER TABLE users ADD COLUMN last_login TEXT",
+  "ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE records ADD COLUMN owner_user_id INTEGER"
+]) { try { db.exec(sql); } catch (error) { if (!(error instanceof Error) || !error.message.includes("duplicate column name")) throw error; } }
 if (process.env.NODE_ENV !== "production") globalForDb.vampireDb = db;
 
 export function audit(actor: string, action: string, details = "") {
