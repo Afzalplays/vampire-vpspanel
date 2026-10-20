@@ -10,7 +10,7 @@ APP_NAME="vampire-vpspanel"
 APP_DIR="${APP_DIR:-/opt/vampire-vpspanel}"
 APP_USER="${APP_USER:-vampirevps}"
 REPO_URL="${REPO_URL:-https://github.com/Afzalplays/vampire-vpspanel.git}"
-BRANCH="${BRANCH:-main}"
+BRANCH="${BRANCH:-feat/production-install-foundation}"
 PORT="${PORT:-3000}"
 DOMAIN="${DOMAIN:-}"
 
@@ -74,6 +74,9 @@ EOF
   chown "$APP_USER:$APP_USER" "$APP_DIR/.env.production"
 fi
 
+set -a
+. "$APP_DIR/.env.production"
+set +a
 npm install --include=dev
 npm run build
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
