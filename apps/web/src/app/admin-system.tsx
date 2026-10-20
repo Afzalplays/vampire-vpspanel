@@ -1,27 +1,248 @@
 "use client";
-import {useEffect,useState} from "react";
-import {useRouter} from "next/navigation";
-type Key={id:number;name:string;prefix:string;created_at:string;last_used_at:string|null;revoked_at:string|null};
-type License={id:number;name:string;key_prefix:string;status:string;expires_at:string|null;created_at:string};
-export default function AdminSystemModule({section}:{section:"Settings"|"API Keys"|"License"}){
- const router=useRouter();const [profileName,setProfileName]=useState("");const [profileEmail,setProfileEmail]=useState("");const [currentPassword,setCurrentPassword]=useState("");const [newPassword,setNewPassword]=useState("");
- const [brand,setBrand]=useState<Record<string,string>>({brand_name:"VampireVPSPanel",brand_subtitle:"VampireInfra Technologies",logo_url:"",background_url:"",background_enabled:"1",background_motion:"aurora"});
- const [keys,setKeys]=useState<Key[]>([]);const [licenses,setLicenses]=useState<License[]>([]);const [name,setName]=useState("");const [days,setDays]=useState("365");const [generated,setGenerated]=useState("");const [error,setError]=useState("");const [notice,setNotice]=useState("");const [busy,setBusy]=useState(false);
- async function load(){if(section==="Settings"){const r=await fetch("/api/admin/settings",{cache:"no-store"});const d=await r.json();if(r.ok){const x:Record<string,string>={...brand};for(const s of d.settings||[])x[s.key]=s.value;setBrand(x);const pr=await fetch("/api/profile",{cache:"no-store"});if(pr.ok){const p=await pr.json();setProfileName(p.user?.name||"");setProfileEmail(p.user?.email||"")}}}if(section==="API Keys"){const r=await fetch("/api/admin/api-keys",{cache:"no-store"});const d=await r.json();if(r.ok)setKeys(d.keys||[])}if(section==="License"){const r=await fetch("/api/admin/licenses",{cache:"no-store"});const d=await r.json();if(r.ok)setLicenses(d.licenses||[])}}
- useEffect(()=>{load().catch(()=>setError("Could not load settings."))},[section]);
- async function upload(kind:"logo"|"background",file?:File){if(!file)return;setError("");setNotice("");const f=new FormData();f.set("file",file);f.set("kind",kind);const r=await fetch("/api/uploads",{method:"POST",body:f});const d=await r.json();if(!r.ok){setError(d.error||"Upload failed");return}setBrand(v=>({...v,[kind==="logo"?"logo_url":"background_url"]:d.url}));setNotice(kind==="logo"?"Logo uploaded. Save settings to apply it.":"Background uploaded. Save settings to apply it.");}
- async function saveSettings(e:React.FormEvent){e.preventDefault();setError("");setNotice("");const r=await fetch("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(brand)});const d=await r.json();if(!r.ok){setError(d.error||"Save failed");return}setBrand({...brand,...d.branding});setNotice("Branding and appearance settings saved.");window.dispatchEvent(new Event("vampire-branding-updated"));}
- async function saveProfile(e:React.FormEvent){e.preventDefault();setError("");const r=await fetch("/api/profile",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"profile",name:profileName,email:profileEmail})});const d=await r.json();if(!r.ok){setError(d.error||"Profile update failed");return}setNotice("Administrator profile saved.")}
- async function changePassword(e:React.FormEvent){e.preventDefault();setError("");const r=await fetch("/api/profile",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"password",currentPassword,newPassword})});const d=await r.json();if(!r.ok){setError(d.error||"Password update failed");return}await fetch("/api/logout",{method:"POST"});router.replace("/login")}
- async function createKey(e:React.FormEvent){e.preventDefault();setError("");setGenerated("");const r=await fetch("/api/admin/api-keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});const d=await r.json();if(!r.ok){setError(d.error||"Key creation failed");return}setGenerated(d.key);setName("");setNotice("API key created. Copy it now; it will not be shown again.");await load();}
- async function revokeKey(id:number){if(!confirm("Revoke this API key? Existing integrations using it will stop working."))return;const r=await fetch("/api/admin/api-keys?id="+id,{method:"DELETE"});const d=await r.json();if(!r.ok){setError(d.error||"Revocation failed");return}setNotice("API key revoked.");await load();}
- async function createLicense(e:React.FormEvent){e.preventDefault();setError("");setGenerated("");const r=await fetch("/api/admin/licenses",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,days:Number(days)})});const d=await r.json();if(!r.ok){setError(d.error||"License creation failed");return}setGenerated(d.key);setName("");setNotice("License issued. Copy the key now; it will not be shown again.");await load();}
- async function revokeLicense(id:number){if(!confirm("Revoke this license?"))return;const r=await fetch("/api/admin/licenses?id="+id,{method:"DELETE"});const d=await r.json();if(!r.ok){setError(d.error||"Revocation failed");return}setNotice("License revoked.");await load();}
- async function copy(){try{await navigator.clipboard.writeText(generated);setNotice("Key copied to clipboard.")}catch{setNotice("Select and copy the displayed key manually.")}}
- return <div className="space-y-5">{error&&<p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 font-bold text-rose-200">{error}</p>}{notice&&<p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 font-bold text-emerald-200">{notice}</p>}
- {section==="Settings"&&<form onSubmit={saveSettings} className="glass max-w-4xl rounded-2xl p-6"><h2 className="text-xl font-bold">Branding & appearance</h2><p className="muted mt-2 text-sm font-semibold">Changes are saved in the local database and applied to shared branding.</p><div className="mt-5 grid gap-4 md:grid-cols-2"><label className="text-sm font-bold">Panel name<input className="field mt-2" value={brand.brand_name||""} maxLength={80} onChange={e=>setBrand(v=>({...v,brand_name:e.target.value}))} required/></label><label className="text-sm font-bold">Subtitle<input className="field mt-2" value={brand.brand_subtitle||""} maxLength={120} onChange={e=>setBrand(v=>({...v,brand_subtitle:e.target.value}))}/></label></div><div className="mt-6 border-t border-white/10 pt-5"><h3 className="font-bold">Logo</h3><div className="mt-3 flex flex-wrap items-center gap-4"><div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-rose-600 text-xl font-black">{brand.logo_url?<img src={brand.logo_url} alt="Current logo" className="h-full w-full object-cover"/>:"V"}</div><label className="btn btn-muted cursor-pointer font-bold">Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" onChange={e=>upload("logo",e.target.files?.[0])}/></label><span className="muted text-xs font-semibold">PNG, JPG, WebP, GIF, AVIF · max 5 MB</span></div></div><div className="mt-6 border-t border-white/10 pt-5"><h3 className="font-bold">Animated background</h3><p className="muted mt-1 text-sm font-semibold">Upload an image or looping MP4/WebM. Videos are muted and looped.</p><div className="mt-3 flex flex-wrap items-center gap-3"><label className="btn btn-muted cursor-pointer font-bold">Upload background<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm" className="hidden" onChange={e=>upload("background",e.target.files?.[0])}/></label><span className="muted break-all text-xs font-semibold">{brand.background_url||"No custom background uploaded"}</span></div><label className="mt-4 flex items-center gap-3 text-sm font-bold"><input type="checkbox" checked={brand.background_enabled!=="0"} onChange={e=>setBrand(v=>({...v,background_enabled:e.target.checked?"1":"0"}))}/> Enable animated background</label><label className="mt-4 block text-sm font-bold">Motion style<select className="field mt-2" value={brand.background_motion||"aurora"} onChange={e=>setBrand(v=>({...v,background_motion:e.target.value}))}><option value="aurora">Aurora glow</option><option value="minimal">Minimal glow</option><option value="none">No motion</option></select></label></div><button className="btn btn-red mt-6 font-bold">Save settings</button></form><form onSubmit={saveProfile} className="glass max-w-4xl rounded-2xl p-6"><h2 className="text-xl font-bold">Administrator account</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-bold">Display name<input className="field mt-2" value={profileName} onChange={e=>setProfileName(e.target.value)} minLength={2} maxLength={80} required/></label><label className="text-sm font-bold">Email<input className="field mt-2" type="email" value={profileEmail} onChange={e=>setProfileEmail(e.target.value)} required/></label></div><button className="btn btn-red mt-4 font-bold">Save account</button></form><form onSubmit={changePassword} className="glass max-w-4xl rounded-2xl p-6"><h2 className="text-xl font-bold">Change administrator password</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-bold">Current password<input className="field mt-2" type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} autoComplete="current-password" required/></label><label className="text-sm font-bold">New password (12+ characters)<input className="field mt-2" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={12} maxLength={128} autoComplete="new-password" required/></label></div><button className="btn btn-red mt-4 font-bold">Change password</button><p className="muted mt-2 text-xs font-semibold">Changing password ends the current session.</p></form>}
- {section==="API Keys"&&<><div className="glass max-w-4xl rounded-2xl p-6"><h2 className="text-xl font-bold">API keys</h2><p className="muted mt-2 text-sm font-semibold">Keys are stored as SHA-256 hashes. The secret is shown only once. Use Authorization: Bearer YOUR_KEY.</p><form onSubmit={createKey} className="mt-5 flex flex-col gap-3 sm:flex-row"><input className="field" placeholder="Key label, e.g. Monitoring" value={name} onChange={e=>setName(e.target.value)} minLength={2} maxLength={80} required/><button className="btn btn-red font-bold">Generate API key</button></form>{generated&&<div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4"><p className="font-bold text-amber-200">Copy this key now — it will not be shown again.</p><code className="mt-2 block break-all font-bold">{generated}</code><button className="btn btn-muted mt-3 font-bold" onClick={copy}>Copy key</button></div>}</div><div className="glass overflow-x-auto rounded-2xl"><table className="w-full text-left text-sm"><thead className="muted border-b border-white/10"><tr><th className="p-4">Name</th><th className="p-4">Prefix</th><th className="p-4">Created</th><th className="p-4">Last used</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead><tbody>{keys.map(k=><tr className="border-b border-white/5" key={k.id}><td className="p-4 font-bold">{k.name}</td><td className="p-4 font-mono">{k.prefix}…</td><td className="p-4">{k.created_at}</td><td className="p-4">{k.last_used_at||"Never"}</td><td className="p-4 font-bold">{k.revoked_at?"Revoked":"Active"}</td><td className="p-4">{!k.revoked_at&&<button className="font-bold text-rose-300" onClick={()=>revokeKey(k.id)}>Revoke</button>}</td></tr>)}{!keys.length&&<tr><td className="muted p-5 font-semibold" colSpan={6}>No API keys created.</td></tr>}</tbody></table></div><p className="muted text-sm font-semibold">Endpoint: <code>/api/v1/servers</code> · GET server inventory requires a valid active bearer key.</p></>}
- {section==="License"&&<><div className="glass max-w-4xl rounded-2xl p-6"><h2 className="text-xl font-bold">License management</h2><p className="muted mt-2 text-sm font-semibold">This deployment issues and validates licenses locally. It is not a remote license server unless you deploy and configure a separate service.</p><form onSubmit={createLicense} className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px_auto]"><input className="field" placeholder="License/customer label" value={name} onChange={e=>setName(e.target.value)} minLength={2} maxLength={80} required/><select className="field" value={days} onChange={e=>setDays(e.target.value)}><option value="30">30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="730">2 years</option><option value="3650">10 years</option></select><button className="btn btn-red font-bold">Issue license</button></form>{generated&&<div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4"><p className="font-bold text-amber-200">Copy this license now — it will not be shown again.</p><code className="mt-2 block break-all font-bold">{generated}</code><button className="btn btn-muted mt-3 font-bold" onClick={copy}>Copy license</button></div>}<div className="mt-5"><h3 className="font-bold">Validate a license</h3><LicenseCheck/></div></div><div className="glass overflow-x-auto rounded-2xl"><table className="w-full text-left text-sm"><thead className="muted border-b border-white/10"><tr><th className="p-4">Name</th><th className="p-4">Prefix</th><th className="p-4">Expires</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead><tbody>{licenses.map(l=><tr className="border-b border-white/5" key={l.id}><td className="p-4 font-bold">{l.name}</td><td className="p-4 font-mono">{l.key_prefix}…</td><td className="p-4">{l.expires_at||"Never"}</td><td className="p-4 font-bold">{l.status}</td><td className="p-4">{l.status==="active"&&<button className="font-bold text-rose-300" onClick={()=>revokeLicense(l.id)}>Revoke</button>}</td></tr>)}{!licenses.length&&<tr><td className="muted p-5 font-semibold" colSpan={5}>No licenses issued.</td></tr>}</tbody></table></div></>}
- </div>;
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type KeyItem = { id:number; name:string; prefix:string; created_at:string; last_used_at:string|null; revoked_at:string|null };
+type LicenseItem = { id:number; name:string; key_prefix:string; status:string; expires_at:string|null; created_at:string };
+type Branding = { brand_name:string; brand_subtitle:string; logo_url:string; background_url:string; background_enabled:string; background_motion:string };
+const defaultBrand:Branding = { brand_name:"VampireVPSPanel", brand_subtitle:"VampireInfra Technologies", logo_url:"", background_url:"", background_enabled:"1", background_motion:"aurora" };
+
+export default function AdminSystemModule({section}:{section:"Settings"|"API Keys"|"License"}) {
+  const router = useRouter();
+  const [brand,setBrand] = useState<Branding>(defaultBrand);
+  const [profileName,setProfileName] = useState("");
+  const [profileEmail,setProfileEmail] = useState("");
+  const [currentPassword,setCurrentPassword] = useState("");
+  const [newPassword,setNewPassword] = useState("");
+  const [keys,setKeys] = useState<KeyItem[]>([]);
+  const [licenses,setLicenses] = useState<LicenseItem[]>([]);
+  const [name,setName] = useState("");
+  const [days,setDays] = useState("365");
+  const [generated,setGenerated] = useState("");
+  const [error,setError] = useState("");
+  const [notice,setNotice] = useState("");
+
+  async function load() {
+    setError("");
+    if (section === "Settings") {
+      const [settingsResponse,profileResponse] = await Promise.all([
+        fetch("/api/admin/settings",{cache:"no-store"}),
+        fetch("/api/profile",{cache:"no-store"})
+      ]);
+      const settingsData = await settingsResponse.json();
+      if (!settingsResponse.ok) throw new Error(settingsData.error || "Could not load branding settings.");
+      const values:Record<string,string> = {...defaultBrand};
+      for (const item of settingsData.settings || []) values[item.key] = item.value;
+      setBrand(values);
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        setProfileName(profileData.user?.name || "");
+        setProfileEmail(profileData.user?.email || "");
+      }
+    } else if (section === "API Keys") {
+      const response = await fetch("/api/admin/api-keys",{cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load API keys.");
+      setKeys(data.keys || []);
+    } else {
+      const response = await fetch("/api/admin/licenses",{cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load licenses.");
+      setLicenses(data.licenses || []);
+    }
+  }
+
+  useEffect(() => { load().catch(e => setError(e instanceof Error ? e.message : "Could not load settings.")); }, [section]);
+
+  async function upload(kind:"logo"|"background",file?:File) {
+    if (!file) return;
+    setError(""); setNotice("");
+    const form = new FormData();
+    form.set("file",file); form.set("kind",kind);
+    const response = await fetch("/api/uploads",{method:"POST",body:form});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "Upload failed."); return; }
+    setBrand(value => ({...value,[kind === "logo" ? "logo_url" : "background_url"]:data.url}));
+    setNotice(kind === "logo" ? "Logo uploaded. Save settings to apply it." : "Background uploaded. Save settings to apply it.");
+  }
+
+  async function saveSettings(e:React.FormEvent) {
+    e.preventDefault(); setError(""); setNotice("");
+    const response = await fetch("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(brand)});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "Settings save failed."); return; }
+    setBrand({...brand,...data.branding});
+    window.dispatchEvent(new Event("vampire-branding-updated"));
+    setNotice("Branding and appearance settings saved.");
+  }
+
+  async function saveProfile(e:React.FormEvent) {
+    e.preventDefault(); setError("");
+    const response = await fetch("/api/profile",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"profile",name:profileName,email:profileEmail})});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "Profile update failed."); return; }
+    setNotice("Administrator profile saved.");
+  }
+
+  async function changePassword(e:React.FormEvent) {
+    e.preventDefault(); setError("");
+    const response = await fetch("/api/profile",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"password",currentPassword,newPassword})});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "Password update failed."); return; }
+    await fetch("/api/logout",{method:"POST"});
+    router.replace("/login");
+  }
+
+  async function createKey(e:React.FormEvent) {
+    e.preventDefault(); setError(""); setNotice(""); setGenerated("");
+    const response = await fetch("/api/admin/api-keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "API key creation failed."); return; }
+    setGenerated(data.key); setName(""); setNotice("API key created. Copy it now; it will not be shown again.");
+    await load();
+  }
+
+  async function revokeKey(id:number) {
+    if (!confirm("Revoke this API key? Integrations using it will stop working.")) return;
+    const response = await fetch("/api/admin/api-keys?id="+id,{method:"DELETE"});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "API key revocation failed."); return; }
+    setNotice("API key revoked."); await load();
+  }
+
+  async function createLicense(e:React.FormEvent) {
+    e.preventDefault(); setError(""); setNotice(""); setGenerated("");
+    const response = await fetch("/api/admin/licenses",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,days:Number(days)})});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "License creation failed."); return; }
+    setGenerated(data.key); setName(""); setNotice("License issued. Copy it now; it will not be shown again.");
+    await load();
+  }
+
+  async function revokeLicense(id:number) {
+    if (!confirm("Revoke this license?")) return;
+    const response = await fetch("/api/admin/licenses?id="+id,{method:"DELETE"});
+    const data = await response.json();
+    if (!response.ok) { setError(data.error || "License revocation failed."); return; }
+    setNotice("License revoked."); await load();
+  }
+
+  async function copyGenerated() {
+    try { await navigator.clipboard.writeText(generated); setNotice("Key copied to clipboard."); }
+    catch { setNotice("Select and copy the displayed key manually."); }
+  }
+
+  return (
+    <div className="space-y-5">
+      {error && <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 font-bold text-rose-200">{error}</p>}
+      {notice && <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 font-bold text-emerald-200">{notice}</p>}
+
+      {section === "Settings" && (
+        <div className="space-y-5">
+          <form onSubmit={saveSettings} className="glass max-w-4xl rounded-2xl p-6">
+            <h2 className="text-xl font-bold">Branding & appearance</h2>
+            <p className="muted mt-2 text-sm font-semibold">These settings apply across the panel and are stored in the local database.</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <label className="text-sm font-bold">Panel name<input className="field mt-2" value={brand.brand_name} maxLength={80} onChange={e=>setBrand(v=>({...v,brand_name:e.target.value}))} required /></label>
+              <label className="text-sm font-bold">Subtitle<input className="field mt-2" value={brand.brand_subtitle} maxLength={120} onChange={e=>setBrand(v=>({...v,brand_subtitle:e.target.value}))} /></label>
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <h3 className="font-bold">Panel logo</h3>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-rose-600 text-xl font-black">{brand.logo_url ? <img src={brand.logo_url} alt="Current logo" className="h-full w-full object-cover" /> : "V"}</div>
+                <label className="btn btn-muted cursor-pointer font-bold">Upload logo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" className="hidden" onChange={e=>upload("logo",e.target.files?.[0])} /></label>
+                <span className="muted text-xs font-semibold">PNG, JPG, WebP, GIF, AVIF · max 5 MB</span>
+              </div>
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <h3 className="font-bold">Animated background</h3>
+              <p className="muted mt-1 text-sm font-semibold">Upload an image or looping MP4/WebM video.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className="btn btn-muted cursor-pointer font-bold">Upload background<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm" className="hidden" onChange={e=>upload("background",e.target.files?.[0])} /></label>
+                <span className="muted break-all text-xs font-semibold">{brand.background_url || "No custom background uploaded"}</span>
+              </div>
+              <label className="mt-4 flex items-center gap-3 text-sm font-bold"><input type="checkbox" checked={brand.background_enabled !== "0"} onChange={e=>setBrand(v=>({...v,background_enabled:e.target.checked?"1":"0"}))} /> Enable animated background</label>
+              <label className="mt-4 block text-sm font-bold">Motion style<select className="field mt-2" value={brand.background_motion || "aurora"} onChange={e=>setBrand(v=>({...v,background_motion:e.target.value}))}><option value="aurora">Aurora glow</option><option value="minimal">Minimal glow</option><option value="none">No motion</option></select></label>
+            </div>
+            <button className="btn btn-red mt-6 font-bold">Save settings</button>
+          </form>
+
+          <form onSubmit={saveProfile} className="glass max-w-4xl rounded-2xl p-6">
+            <h2 className="text-xl font-bold">Administrator account</h2>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="text-sm font-bold">Display name<input className="field mt-2" value={profileName} onChange={e=>setProfileName(e.target.value)} minLength={2} maxLength={80} required /></label>
+              <label className="text-sm font-bold">Email<input className="field mt-2" type="email" value={profileEmail} onChange={e=>setProfileEmail(e.target.value)} required /></label>
+            </div>
+            <button className="btn btn-red mt-4 font-bold">Save account</button>
+          </form>
+
+          <form onSubmit={changePassword} className="glass max-w-4xl rounded-2xl p-6">
+            <h2 className="text-xl font-bold">Change administrator password</h2>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="text-sm font-bold">Current password<input className="field mt-2" type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} autoComplete="current-password" required /></label>
+              <label className="text-sm font-bold">New password (12+ characters)<input className="field mt-2" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={12} maxLength={128} autoComplete="new-password" required /></label>
+            </div>
+            <button className="btn btn-red mt-4 font-bold">Change password</button>
+            <p className="muted mt-2 text-xs font-semibold">Changing password ends the current session.</p>
+          </form>
+        </div>
+      )}
+
+      {section === "API Keys" && (
+        <div className="space-y-5">
+          <div className="glass max-w-4xl rounded-2xl p-6">
+            <h2 className="text-xl font-bold">API keys</h2>
+            <p className="muted mt-2 text-sm font-semibold">Keys are stored as SHA-256 hashes. The secret is shown only once. Use Authorization: Bearer YOUR_KEY.</p>
+            <form onSubmit={createKey} className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input className="field" placeholder="Key label, e.g. Monitoring" value={name} onChange={e=>setName(e.target.value)} minLength={2} maxLength={80} required />
+              <button className="btn btn-red font-bold">Generate API key</button>
+            </form>
+            {generated && <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4"><p className="font-bold text-amber-200">Copy this key now — it will not be shown again.</p><code className="mt-2 block break-all font-bold">{generated}</code><button type="button" className="btn btn-muted mt-3 font-bold" onClick={copyGenerated}>Copy key</button></div>}
+          </div>
+          <div className="glass overflow-x-auto rounded-2xl">
+            <table className="w-full text-left text-sm">
+              <thead className="muted border-b border-white/10"><tr><th className="p-4">Name</th><th className="p-4">Prefix</th><th className="p-4">Created</th><th className="p-4">Last used</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead>
+              <tbody>{keys.map(k=><tr className="border-b border-white/5" key={k.id}><td className="p-4 font-bold">{k.name}</td><td className="p-4 font-mono">{k.prefix}…</td><td className="p-4">{k.created_at}</td><td className="p-4">{k.last_used_at || "Never"}</td><td className="p-4 font-bold">{k.revoked_at ? "Revoked" : "Active"}</td><td className="p-4">{!k.revoked_at && <button type="button" className="font-bold text-rose-300" onClick={()=>revokeKey(k.id)}>Revoke</button>}</td></tr>)}{!keys.length && <tr><td className="muted p-5 font-semibold" colSpan={6}>No API keys created.</td></tr>}</tbody>
+            </table>
+          </div>
+          <p className="muted text-sm font-semibold">Endpoint: <code>/api/v1/servers</code> · GET server inventory requires a valid active bearer key.</p>
+        </div>
+      )}
+
+      {section === "License" && (
+        <div className="space-y-5">
+          <div className="glass max-w-4xl rounded-2xl p-6">
+            <h2 className="text-xl font-bold">License management</h2>
+            <p className="muted mt-2 text-sm font-semibold">This deployment issues and validates licenses locally. A separate remote license server is not configured.</p>
+            <form onSubmit={createLicense} className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px_auto]">
+              <input className="field" placeholder="License/customer label" value={name} onChange={e=>setName(e.target.value)} minLength={2} maxLength={80} required />
+              <select className="field" value={days} onChange={e=>setDays(e.target.value)}><option value="30">30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="730">2 years</option><option value="3650">10 years</option></select>
+              <button className="btn btn-red font-bold">Issue license</button>
+            </form>
+            {generated && <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4"><p className="font-bold text-amber-200">Copy this license now — it will not be shown again.</p><code className="mt-2 block break-all font-bold">{generated}</code><button type="button" className="btn btn-muted mt-3 font-bold" onClick={copyGenerated}>Copy license</button></div>}
+            <div className="mt-5"><LicenseCheck /></div>
+          </div>
+          <div className="glass overflow-x-auto rounded-2xl">
+            <table className="w-full text-left text-sm">
+              <thead className="muted border-b border-white/10"><tr><th className="p-4">Name</th><th className="p-4">Prefix</th><th className="p-4">Expires</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead>
+              <tbody>{licenses.map(l=><tr className="border-b border-white/5" key={l.id}><td className="p-4 font-bold">{l.name}</td><td className="p-4 font-mono">{l.key_prefix}…</td><td className="p-4">{l.expires_at || "Never"}</td><td className="p-4 font-bold">{l.status}</td><td className="p-4">{l.status === "active" && <button type="button" className="font-bold text-rose-300" onClick={()=>revokeLicense(l.id)}>Revoke</button>}</td></tr>)}{!licenses.length && <tr><td className="muted p-5 font-semibold" colSpan={5}>No licenses issued.</td></tr>}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
-function LicenseCheck(){const [key,setKey]=useState("");const [result,setResult]=useState("");async function check(e:React.FormEvent){e.preventDefault();setResult("Checking…");const r=await fetch("/api/licenses/validate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})});const d=await r.json();setResult(r.ok?(d.valid?"VALID · "+d.status.toUpperCase():"INVALID · "+String(d.status||d.error).toUpperCase()):"ERROR · "+(d.error||"Validation failed"));}return <form onSubmit={check} className="mt-3 flex flex-col gap-3 sm:flex-row"><input className="field" value={key} onChange={e=>setKey(e.target.value)} placeholder="Paste a license key" required/><button className="btn btn-muted font-bold">Validate</button>{result&&<p className="self-center text-sm font-bold">{result}</p>}</form>}
+
+function LicenseCheck() {
+  const [key,setKey] = useState("");
+  const [result,setResult] = useState("");
+  async function check(e:React.FormEvent) {
+    e.preventDefault(); setResult("Checking…");
+    const response = await fetch("/api/licenses/validate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})});
+    const data = await response.json();
+    setResult(response.ok ? (data.valid ? "VALID · "+data.status.toUpperCase() : "INVALID · "+String(data.status || data.error).toUpperCase()) : "ERROR · "+(data.error || "Validation failed"));
+  }
+  return <form onSubmit={check} className="mt-3 flex flex-col gap-3 sm:flex-row"><input className="field" value={key} onChange={e=>setKey(e.target.value)} placeholder="Paste a license key" required /><button className="btn btn-muted font-bold">Validate license</button>{result && <p className="self-center text-sm font-bold">{result}</p>}</form>;
+}
