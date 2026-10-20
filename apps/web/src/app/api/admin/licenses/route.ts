@@ -4,7 +4,7 @@ import {db,audit} from "@/lib/db";
 import {requireAdmin,requestOriginOk} from "@/lib/auth";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-export async function GET(){const a=await requireAdmin();if(!a.user)return a.response!;return NextResponse.json({licenses:db.prepare("SELECT id,name,key_prefix,status,expires_at,created_at FROM licenses ORDER BY id DESC").all()});}
+export async function GET(){const a=await requireAdmin();if(!a.user)return a.response!;return NextResponse.json({licenses:db.prepare("SELECT id,name,key_prefix,CASE WHEN status='active' AND expires_at IS NOT NULL AND datetime(expires_at)<=datetime('now') THEN 'expired' ELSE status END AS status,expires_at,created_at FROM licenses ORDER BY id DESC").all()});}
 export async function POST(req:NextRequest){
  const a=await requireAdmin();if(!a.user)return a.response!;if(!requestOriginOk(req))return NextResponse.json({error:"Invalid request origin"},{status:403});
  let b:any;try{b=await req.json()}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}
