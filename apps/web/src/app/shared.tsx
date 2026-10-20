@@ -13,7 +13,7 @@ export function Ambient({personal=false}:{personal?:boolean}) {
  const b=useBranding();
  const [personalAsset,setPersonalAsset]=useState("");
  const [personalEnabled,setPersonalEnabled]=useState(true);
- useEffect(()=>{if(!personal)return;let live=true;fetch("/api/profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.settings){setPersonalAsset(d.settings.background_url||"");setPersonalEnabled(d.settings.background_enabled!==0)}}).catch(()=>{});return()=>{live=false}},[personal]);
+ useEffect(()=>{if(!personal)return;let live=true;const load=()=>fetch("/api/profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.settings){setPersonalAsset(d.settings.background_url||"");setPersonalEnabled(d.settings.background_enabled!==0)}}).catch(()=>{});const changed=()=>{void load()};void load();window.addEventListener("vampire-personal-background-updated",changed);return()=>{live=false;window.removeEventListener("vampire-personal-background-updated",changed)}},[personal]);
  const custom=personal&&personalEnabled&&personalAsset?personalAsset:b.background_url;
  const enabled=personal&&personalAsset?personalEnabled:b.background_enabled!=="0";
  const video=Boolean(custom&&/\.(mp4|webm)(\?|$)/i.test(custom));
