@@ -34,7 +34,7 @@ export default function AdminSystemModule({section}:{section:"Settings"|"API Key
       if (!settingsResponse.ok) throw new Error(settingsData.error || "Could not load branding settings.");
       const values:Record<string,string> = {...defaultBrand};
       for (const item of settingsData.settings || []) values[item.key] = item.value;
-      setBrand(values);
+      setBrand({...defaultBrand,...values});
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
         setProfileName(profileData.user?.name || "");
