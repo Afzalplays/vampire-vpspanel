@@ -13,5 +13,5 @@ export async function PATCH(req:NextRequest){
  for(const [key,raw] of Object.entries(body)){if(!allowed.has(key))continue;const value=String(raw??"");if(value.length>2048)return NextResponse.json({error:key+" is too long."},{status:400});if(key==="brand_name"&&(value.trim().length<2||value.length>80))return NextResponse.json({error:"Brand name must be 2–80 characters."},{status:400});if(key==="background_enabled"&&!["0","1"].includes(value))return NextResponse.json({error:"Invalid background toggle."},{status:400});if(key==="background_motion"&&!["aurora","minimal","none"].includes(value))return NextResponse.json({error:"Invalid animation style."},{status:400});up.run(key,value);}
  audit(a.user.email,"branding_settings_updated",Object.keys(body).filter(k=>allowed.has(k)).join(","));
  const rows=db.prepare("SELECT key,value FROM app_settings").all() as Array<{key:string;value:string}>;
- return NextResponse.json({ok:true,branding:Object.fromEntries(rows)});
+ return NextResponse.json({ok:true,branding:Object.fromEntries(rows.map(row => [row.key,row.value] as const))});
 }
