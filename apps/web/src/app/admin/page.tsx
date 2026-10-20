@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ambient } from "../page";
+import { Ambient } from "../shared";
 
 type User={id:number;name:string;email:string;role:string;created_at:string};
 type RecordItem={id:number;type:string;name:string;status:string;details:string;created_at:string};
