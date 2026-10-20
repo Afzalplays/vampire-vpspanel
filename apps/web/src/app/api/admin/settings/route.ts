@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
   if (input.smtp_port !== undefined && (!/^\d{1,5}$/.test(input.smtp_port) || Number(input.smtp_port) < 1 || Number(input.smtp_port) > 65535)) return NextResponse.json({error:"Invalid SMTP port"}, {status:400});
   ensureTable();
   const put = db.prepare("INSERT INTO panel_settings(key,value,updated_at) VALUES(?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=datetime('now')");
-  const tx = db.transaction(() => { for (const [k,v] of entries) { if (secretKeys.has(k) && v === "••••••••") continue; put.run(k, v); } });
+  const tx = db.transaction(() => { for (const [k,v] of entries) { if (secretKeys.has(k) && (v === "••••••••" || (k === "smtp_password" && v === ""))) continue; put.run(k, v); } });
   tx();
   audit(a.user.email, "panel_settings_updated", entries.map(([k])=>k).join(","));
   return NextResponse.json({ok:true});
