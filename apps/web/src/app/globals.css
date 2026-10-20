@@ -22,3 +22,9 @@ button { cursor: pointer; }
 .btn-muted { background: #20212a; color: #e4e4e7; border: 1px solid #343540; }
 .btn-muted:hover { border-color: #e11d48; }
 .muted { color: #9293a1; }
+
+.ambient-disabled { background: #08090d; }
+.ambient-media { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.32; }
+.ambient.motion-minimal .orb { opacity:.08; filter:blur(120px); }
+.ambient.motion-none .orb { animation:none; }
+@media (prefers-reduced-motion: reduce) { .ambient-media { display:none; } }

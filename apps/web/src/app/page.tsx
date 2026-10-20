@@ -8,9 +8,9 @@ export default function Home() {
   let live = true;
   fetch("/api/me", { cache: "no-store" }).then(r => r.json()).then(data => {
    if (!live) return;
-   router.replace(data.setupRequired ? "/setup" : data.user ? "/admin" : "/login");
+   router.replace(data.setupRequired ? "/setup" : data.user ? (data.user.role === "ADMIN" ? "/admin" : "/user") : "/login");
   }).catch(() => { if (live) router.replace("/login"); });
   return () => { live = false; };
  }, [router]);
- return <div className="relative flex min-h-screen items-center justify-center overflow-hidden"><Ambient /><div className="relative z-10 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-600 text-2xl font-black shadow-lg shadow-rose-950/60">V</div><p className="text-sm text-zinc-400">Starting VampireVPSPanel…</p></div></div>;
+ return <div className="relative flex min-h-screen items-center justify-center overflow-hidden"><Ambient /><div className="relative z-10 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-rose-600 text-2xl font-black">V</div><p className="text-sm font-bold text-zinc-300">Starting VampireVPSPanel…</p></div></div>;
 }
