@@ -2,7 +2,7 @@
 
 VampireVPSPanel is a custom VPS hosting control-panel project for eventual KVM/QEMU and Proxmox VE management.
 
-> **Current status — early implementation, not production-ready.** The current application includes a Next.js web UI, first-run administrator setup, cookie-based sessions, SQLite persistence, admin inventory records and an audit log. Inventory records are not real virtual machines. The repository does **not** yet provide production-ready KVM/Proxmox provisioning, live VM metrics, customer VPS lifecycle controls, license enforcement, SMTP notification delivery, or scheduled expiry suspension. Do not sell VPS services through it or connect it to production hypervisors until these are implemented and security-tested.
+> **Current status — early implementation, not production-ready.** The current application includes a Next.js web UI, first-run administrator setup, cookie-based sessions, SQLite persistence, admin inventory records and an audit log. Inventory records are not real virtual machines. The repository does **not** yet provide production-ready KVM/Proxmox provisioning, live VM metrics, customer VPS lifecycle controls, event-triggered email notifications, signed offline license enforcement, or scheduled expiry suspension. Do not sell VPS services through it or connect it to production hypervisors until these are implemented and security-tested.
 
 ## Install the current web application
 
@@ -10,7 +10,7 @@ Supported targets: fresh Debian/Ubuntu servers with root access. The installer i
 
 ```bash
 apt-get update && apt-get install -y curl
-curl -fsSL https://raw.githubusercontent.com/Afzalplays/vampire-vpspanel/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/Afzalplays/vampire-vpspanel/feat/production-install-foundation/install.sh -o install.sh
 bash install.sh
 ```
 
