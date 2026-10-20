@@ -14,6 +14,7 @@ export async function POST(req:NextRequest){
  const file=form.get("file"),kind=String(form.get("kind")||"avatar");
  if(!(file instanceof File))return NextResponse.json({error:"Choose a file to upload."},{status:400});
  if(!["avatar","logo","background"].includes(kind))return NextResponse.json({error:"Invalid upload type."},{status:400});
+ if(kind==="logo"&&user.role!=="ADMIN")return NextResponse.json({error:"Only administrators can upload the panel logo."},{status:403});
  const isVideo=file.type==="video/mp4"||file.type==="video/webm";
  const allowed=kind==="background"?Boolean(mimeExt[file.type]):Boolean(mimeExt[file.type]&&file.type.startsWith("image/"));
  if(!allowed)return NextResponse.json({error:kind==="background"?"Use PNG, JPG, WebP, GIF, AVIF, MP4 or WebM.":"Use PNG, JPG, WebP, GIF or AVIF."},{status:400});
