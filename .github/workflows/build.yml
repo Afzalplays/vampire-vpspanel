@@ -1,0 +1,27 @@
+name: Build VampireVPSPanel
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/customer-portal-settings-api-license
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+      SESSION_SECRET: ci-only-build-secret-change-this-before-deployment-2026
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install
+      - name: Build web panel
+        run: npm run build
