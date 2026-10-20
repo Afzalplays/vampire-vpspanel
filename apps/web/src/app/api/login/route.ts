@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
  if(!isValidEmail(email)||!password||password.length>128) return NextResponse.json({error:"Invalid email or password."},{status:400});
  const user=db.prepare("SELECT id,name,email,password_hash,role FROM users WHERE email=?").get(email) as {id:number;name:string;email:string;password_hash:string;role:"ADMIN"|"USER"}|undefined;
  if(!user||!(await bcrypt.compare(password,user.password_hash))) return NextResponse.json({error:"Invalid email or password."},{status:401});
- if(user.role!=="ADMIN") return NextResponse.json({error:"This control panel currently allows administrator sign-in only."},{status:403});
- const safe={id:user.id,name:user.name,email:user.email,role:user.role};const response=NextResponse.json({user:safe});setSessionCookie(response,await createSession(safe));return response;
+ const safe={id:user.id,name:user.name,email:user.email,role:user.role};
+ const response=NextResponse.json({user:safe,redirect:user.role==="ADMIN"?"/admin":"/user"});
+ setSessionCookie(response,await createSession(safe));return response;
 }
