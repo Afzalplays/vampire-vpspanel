@@ -44,7 +44,7 @@ Application files default to `/opt/vampire-vpspanel`; persistent SQLite data is 
 ## Not implemented yet — no fake status claims
 
 - Actual KVM/QEMU VM creation, power controls, console and networking.
-- Proxmox VE adapter, scoped credentials and real host/VM health checks.
+- Limited Proxmox VE API connector foundation: admin configuration, HTTPS-only API calls, connection/version/node diagnostics, and read-only node/VM inventory endpoints. This is not VM provisioning or a production-ready hypervisor integration.
 - Customer-facing VPS panel and resource ownership enforcement across VM APIs.
 - Admin-managed branding persisted and applied across all app surfaces.
 - SMTP settings, delivery tests, email templates and event-triggered notifications.
@@ -52,7 +52,15 @@ Application files default to `/opt/vampire-vpspanel`; persistent SQLite data is 
 - Signed license issuance, activation, expiry and revocation.
 - Production-grade backup/restore, migration, monitoring and security test suite.
 
-These are implementation tasks, not working features just because they appear in a UI or roadmap. The installer deploys the current web application only.
+These are implementation tasks, not working features just because they appear in a UI or roadmap. The installer deploys the current web application only. The Proxmox connector requires a reachable Proxmox VE API, a least-privilege API token, and a manually configured `PROXMOX_TOKEN_SECRET`; it does not create, resize, suspend, or delete VMs.
+
+## Proxmox connector foundation (read-only)
+
+1. In Proxmox VE, create a dedicated API user/token with only the permissions needed for inventory and version checks. Do not use `root@pam` or a full-privilege token.
+2. Set `PROXMOX_TOKEN_SECRET` in `/opt/vampire-vpspanel/.env.production` (never commit it). The admin API saves the HTTPS base URL, token ID, and node name in SQLite; the token secret is read only from the environment.
+3. Restart the service: `systemctl restart vampire-vpspanel`.
+4. As an authenticated admin, use `/api/admin/hypervisor` to read config, `PUT /api/admin/hypervisor` to save `{ "url": "https://pve.example.com:8006", "tokenId": "panel@pve!inventory", "node": "pve1" }`, and `POST /api/admin/hypervisor` to test connectivity. `GET /api/admin/hypervisor?mode=nodes` and `?mode=vms` expose read-only inventory.
+5. Use a trusted TLS certificate on Proxmox. TLS verification is intentionally not disabled. This connector has not been tested against a live Proxmox server and does not provision or control VMs.
 
 ## Security notes
 
