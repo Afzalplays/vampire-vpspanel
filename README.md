@@ -1,52 +1,75 @@
 # VampireVPSPanel
 
-VampireVPSPanel is a separate VPS hosting control plane inspired by the workflows of commercial virtualization panels. It is designed to manage standalone KVM/QEMU hosts and existing Proxmox VE environments through distinct, explicit backend adapters.
+VampireVPSPanel is a custom VPS hosting control-panel project for eventual KVM/QEMU and Proxmox VE management.
 
-> **Development status:** Early planning/scaffolding. This repository is not yet production-ready and must not be used to manage production hypervisors until implementation and security testing are complete.
+> **Current status — early implementation, not production-ready.** The current application includes a Next.js web UI, first-run administrator setup, cookie-based sessions, SQLite persistence, admin inventory records and an audit log. Inventory records are not real virtual machines. The repository does **not** yet provide production-ready KVM/Proxmox provisioning, live VM metrics, customer VPS lifecycle controls, license enforcement, SMTP notification delivery, or scheduled expiry suspension. Do not sell VPS services through it or connect it to production hypervisors until these are implemented and security-tested.
 
-## Planned capabilities
+## Install the current web application
 
-- Admin and customer dashboards
-- VPS inventory and lifecycle orchestration
-- Standalone KVM/QEMU integration through a restricted Linux node agent
-- Proxmox VE integration through scoped API credentials
-- Node, storage, network and IP-pool management
-- OS image catalogue and provisioning jobs
-- Resource usage and health monitoring
-- Independent VampireVPSPanel license service with signed entitlements
-- Optional billing, invoices, reseller accounts and extensions
+Supported targets: fresh Debian/Ubuntu servers with root access. The installer installs Node.js 22+, dependencies, builds the current web app, configures a systemd service and creates an Nginx reverse proxy.
 
-## Planned stack
+```bash
+apt-get update && apt-get install -y curl
+curl -fsSL https://raw.githubusercontent.com/Afzalplays/vampire-vpspanel/main/install.sh -o install.sh
+bash install.sh
+```
 
-- **Web:** Next.js, React, TypeScript and Tailwind CSS
-- **API:** NestJS, TypeScript and versioned REST endpoints
-- **Data:** PostgreSQL and Prisma
-- **Jobs:** Redis and BullMQ
-- **KVM agent:** Go, using libvirt APIs
-- **Proxmox:** Proxmox VE API adapter
-- **Licensing:** Separate service using asymmetric signatures
+To use a domain, point its DNS to the server first and pass the domain to the installer:
 
-## Architecture principles
+```bash
+DOMAIN=panel.example.com bash install.sh
+```
 
-1. KVM and Proxmox are separate backends behind a common capability-aware interface.
-2. Privileged host operations are performed by the restricted KVM agent or the Proxmox API—not by arbitrary commands supplied by the web application.
-3. Long-running operations use durable, idempotent jobs.
-4. Every request enforces authentication, role permissions and resource ownership.
-5. License verification outages must not abruptly power off existing customer VMs.
-6. Secrets, signing keys and production databases are isolated from public endpoints.
+The installer currently configures HTTP only. Configure HTTPS with a trusted certificate before exposing the panel publicly. After the service starts, open `/setup` once and create the initial administrator with a unique password of at least 12 characters. Initial setup closes after the first account is created.
 
-## Development roadmap
+Useful commands:
 
-1. Foundation: monorepo, configuration, database, authentication, RBAC and audit trail.
-2. KVM MVP: secure enrollment, node health, verified images and VM lifecycle jobs.
-3. Proxmox adapter: scoped credentials, inventory discovery and supported lifecycle actions.
-4. Customer experience: VPS controls, console integration, metrics and networking.
-5. Licensing: activation, signed entitlements, renewals, revocation and offline grace policy.
-6. Production hardening: installers, backup/restore, upgrade/rollback and security testing.
+```bash
+systemctl status vampire-vpspanel
+journalctl -u vampire-vpspanel -f
+systemctl restart vampire-vpspanel
+```
 
-## Development
+Application files default to `/opt/vampire-vpspanel`; persistent SQLite data is under `data/`. The generated `.env.production` contains a random session secret and must remain private. Back up the data directory and environment file securely.
 
-The repository is being built in phases. Setup commands will be documented after the initial workspace and applications are implemented. Do not copy example secrets into production or expose PostgreSQL/Redis directly to the public internet.
+## Implemented in the current web app
+
+- One-time first-run administrator creation; public registration is disabled.
+- Password hashing and signed, HTTP-only session cookies.
+- Admin-gated user and inventory API routes.
+- SQLite storage and basic audit logging.
+- Basic dashboard and inventory management UI.
+- A web-app installer and systemd/Nginx deployment setup.
+
+## Not implemented yet — no fake status claims
+
+- Actual KVM/QEMU VM creation, power controls, console and networking.
+- Proxmox VE adapter, scoped credentials and real host/VM health checks.
+- Customer-facing VPS panel and resource ownership enforcement across VM APIs.
+- Admin-managed branding persisted and applied across all app surfaces.
+- SMTP settings, delivery tests, email templates and event-triggered notifications.
+- VPS expiry scheduler, grace periods and real hypervisor suspension/reactivation.
+- Signed license issuance, activation, expiry and revocation.
+- Production-grade backup/restore, migration, monitoring and security test suite.
+
+These are implementation tasks, not working features just because they appear in a UI or roadmap. The installer deploys the current web application only.
+
+## Security notes
+
+- Do not expose the app publicly before configuring HTTPS.
+- Keep `.env.production`, session secrets, mail credentials and hypervisor tokens out of Git.
+- Never grant the web app arbitrary root shell access to hypervisor nodes.
+- Hypervisor actions should use a restricted agent or scoped Proxmox API credentials, strict authorization, durable jobs and audit events.
+- Do not treat a database status change as a real VM suspend operation.
+- Test upgrades and restore procedures on a disposable server before production use.
+
+## Planned architecture
+
+- **Web:** Next.js, React, TypeScript
+- **Data:** currently SQLite for the early web scaffold; production data architecture remains to be completed.
+- **Virtualization:** restricted KVM/libvirt agent and/or Proxmox VE API adapter.
+- **Background work:** durable jobs for provisioning, notifications, license refresh and expiry enforcement.
+- **Licensing:** signed entitlements with explicit offline grace policy.
 
 ## License
 
