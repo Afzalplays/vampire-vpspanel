@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ambient } from "../page";
-import { Brand } from "../setup/page";
+import { Ambient, Brand } from "../shared";
 export default function LoginPage(){
  const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);const router=useRouter();
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Login failed");router.replace("/admin");}catch(x){setError(x instanceof Error?x.message:"Login failed");}finally{setBusy(false);}}
