@@ -16,7 +16,7 @@ export function Ambient({personal=false}:{personal?:boolean}) {
  useEffect(()=>{if(!personal)return;let live=true;fetch("/api/profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.settings){setPersonalAsset(d.settings.background_url||"");setPersonalEnabled(d.settings.background_enabled!==0)}}).catch(()=>{});return()=>{live=false}},[personal]);
  const custom=personal&&personalEnabled&&personalAsset?personalAsset:b.background_url;
  const enabled=personal&&personalAsset?personalEnabled:b.background_enabled!=="0";
- const video=Boolean(custom&&/\\.(mp4|webm)(\\?|$)/i.test(custom));
+ const video=Boolean(custom&&/\.(mp4|webm)(\?|$)/i.test(custom));
  return <div className={"ambient "+(!enabled?"ambient-disabled":"")+" motion-"+(b.background_motion||"aurora")} aria-hidden="true">
    {enabled&&custom&&(video?<video className="ambient-media" src={custom} autoPlay muted loop playsInline/>:<img className="ambient-media" src={custom} alt=""/>)}
    {enabled&&<><div className="orb one"/><div className="orb two"/><div className="orb three"/></>}
